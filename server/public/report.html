@@ -1,0 +1,667 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BugSnap | Session Report</title>
+
+  <style>
+    :root {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      color: #e5e7eb;
+      background: #0b1120;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at top left, #172554 0, transparent 38%),
+        #0b1120;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      color: #fff;
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+    }
+
+    .brand span {
+      color: #60a5fa;
+    }
+
+    .eyebrow {
+      color: #94a3b8;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 5vw, 38px);
+      letter-spacing: -1px;
+      margin: 0 0 10px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      line-height: 1.6;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .panel {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #263449;
+      border-radius: 16px;
+      padding: 22px;
+      margin-top: 20px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      background: #111c30;
+      border: 1px solid #263449;
+      padding: 16px;
+      border-radius: 12px;
+      min-width: 0;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 25px;
+      font-weight: 750;
+      color: #f8fafc;
+      overflow-wrap: anywhere;
+    }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    h2 {
+      font-size: 19px;
+      margin: 0;
+      color: #f8fafc;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 9px;
+      background: #2563eb;
+      color: white;
+      font-size: 14px;
+      font-weight: 650;
+      padding: 11px 15px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background: #3b82f6;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: #94a3b8;
+      font-size: 12px;
+      margin-bottom: 24px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .green {
+      background: #22c55e;
+    }
+
+    .red {
+      background: #ef4444;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 32px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: #263449;
+    }
+
+    .event {
+      position: relative;
+      margin-bottom: 18px;
+      padding: 17px;
+      border: 1px solid #263449;
+      border-radius: 12px;
+      background: #111c30;
+      min-width: 0;
+    }
+
+    .event:last-child {
+      margin-bottom: 0;
+    }
+
+    .event-marker {
+      position: absolute;
+      left: -32px;
+      top: 22px;
+      width: 16px;
+      height: 16px;
+      border: 3px solid #0b1120;
+      border-radius: 50%;
+    }
+
+    .event.step .event-marker {
+      background: #22c55e;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    }
+
+    .event.error .event-marker {
+      background: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+
+    .event-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .event-type {
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+
+    .event.step .event-type {
+      color: #4ade80;
+    }
+
+    .event.error .event-type {
+      color: #f87171;
+    }
+
+    .timestamp {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .target {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: #93c5fd;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+      margin-bottom: 10px;
+    }
+
+    .detail {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .empty {
+      color: #94a3b8;
+      text-align: center;
+      padding: 28px 10px;
+      line-height: 1.7;
+    }
+
+    .message {
+      color: #cbd5e1;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .message.error-text {
+      color: #fca5a5;
+    }
+
+    .session-id {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+      color: #93c5fd;
+      margin-top: 8px;
+    }
+
+    footer {
+      color: #64748b;
+      text-align: center;
+      font-size: 12px;
+      margin-top: 26px;
+    }
+
+    @media (max-width: 560px) {
+      .container {
+        padding: 24px 14px 40px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <header>
+      <div class="brand">🐞 Bug<span>Snap</span></div>
+      <button id="copyButton" class="button" disabled>
+        Copy Markdown
+      </button>
+    </header>
+
+    <div class="eyebrow">Session report</div>
+    <h1>Recorded testing session</h1>
+    <p class="subtitle">
+      A chronological view of captured interactions and console errors.
+    </p>
+    <div id="sessionId" class="session-id"></div>
+
+    <section class="panel">
+      <div class="summary">
+        <div class="stat">
+          <div class="stat-label">Total events</div>
+          <div class="stat-value" id="totalCount">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Steps</div>
+          <div class="stat-value" id="stepCount">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Console errors</div>
+          <div class="stat-value" id="errorCount">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Event timeline</h2>
+        <span id="timelineStatus" class="subtitle">Loading session…</span>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <span class="dot green"></span>
+          Interaction / step
+        </div>
+        <div class="legend-item">
+          <span class="dot red"></span>
+          Console error
+        </div>
+      </div>
+
+      <div id="timeline" class="timeline">
+        <div class="empty">Loading recorded events…</div>
+      </div>
+
+      <div id="pageMessage" class="message" role="status"></div>
+    </section>
+
+    <footer>Generated locally by BugSnap</footer>
+  </main>
+
+  <script>
+    const sessionId = decodeURIComponent(
+      window.location.pathname.split("/").pop()
+    );
+
+    const timeline = document.getElementById("timeline");
+    const timelineStatus = document.getElementById("timelineStatus");
+    const pageMessage = document.getElementById("pageMessage");
+    const copyButton = document.getElementById("copyButton");
+
+    let session = null;
+    let events = [];
+
+    document.getElementById("sessionId").textContent =
+      "Session ID: " + sessionId;
+
+    function isConsoleError(event) {
+      const type = String(
+        event.eventType || event.type || ""
+      ).toLowerCase();
+
+      return [
+        "console_error",
+        "console.error",
+        "error",
+        "uncaught_error"
+      ].includes(type);
+    }
+
+    function getEventDetails(event) {
+      if (event.details && typeof event.details === "object") {
+        return event.details;
+      }
+
+      return {};
+    }
+
+    function formatTimestamp(value) {
+      if (!value) return "Time unavailable";
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return date.toLocaleString();
+    }
+
+    function addText(parent, tag, className, text) {
+      const element = document.createElement(tag);
+      element.className = className;
+      element.textContent = text;
+      parent.appendChild(element);
+      return element;
+    }
+
+    function renderTimeline() {
+      timeline.replaceChildren();
+
+      const steps = events.filter(event => !isConsoleError(event));
+      const errors = events.filter(isConsoleError);
+
+      document.getElementById("totalCount").textContent =
+        events.length;
+
+      document.getElementById("stepCount").textContent =
+        steps.length;
+
+      document.getElementById("errorCount").textContent =
+        errors.length;
+
+      if (events.length === 0) {
+        timeline.innerHTML = "";
+        addText(
+          timeline,
+          "div",
+          "empty",
+          "No events were recorded in this session."
+        );
+        timelineStatus.textContent = "0 events";
+        return;
+      }
+
+      events.forEach((event, index) => {
+        const error = isConsoleError(event);
+        const details = getEventDetails(event);
+
+        const card = document.createElement("article");
+        card.className = `event ${error ? "error" : "step"}`;
+
+        const marker = document.createElement("span");
+        marker.className = "event-marker";
+        marker.setAttribute("aria-hidden", "true");
+        card.appendChild(marker);
+
+        const top = document.createElement("div");
+        top.className = "event-top";
+
+        addText(
+          top,
+          "span",
+          "event-type",
+          error ? "Console error" : `Step ${index + 1}: ${event.eventType || "Interaction"}`
+        );
+
+        addText(
+          top,
+          "time",
+          "timestamp",
+          formatTimestamp(event.timestamp)
+        );
+
+        card.appendChild(top);
+
+        addText(
+          card,
+          "div",
+          "target",
+          event.targetElement ||
+          details.targetElement ||
+          (details.tagName ? details.tagName.toLowerCase() : "") ||
+          "Target not recorded"
+        );
+
+        const description =
+          details.message ||
+          details.text ||
+          details.error ||
+          details.className ||
+          (error ? "Console error captured." : "User interaction recorded.");
+
+        addText(card, "div", "detail", String(description));
+
+        if (error && details.stack) {
+          addText(card, "pre", "detail", String(details.stack));
+        }
+
+        timeline.appendChild(card);
+      });
+
+      timelineStatus.textContent =
+        `${events.length} event${events.length === 1 ? "" : "s"}`;
+    }
+
+    function markdownEscape(value) {
+      return String(value ?? "")
+        .replace(/\\/g, "\\\\")
+        .replace(/([`*_{}\[\]<>\|])/g, "\\$1")
+        .replace(/\r?\n/g, " ");
+    }
+
+    function generateMarkdown() {
+      const lines = [
+        "# BugSnap Session Report",
+        "",
+        `- 🆔 **Session ID:** ${markdownEscape(session.sessionId || sessionId)}`,
+        `- 📅 **Created:** ${markdownEscape(formatTimestamp(session.createdAt))}`,
+        `- 📊 **Total events:** ${events.length}`,
+        "",
+        "## Steps and Observations",
+        ""
+      ];
+
+      if (events.length === 0) {
+        lines.push("_No events were recorded._");
+      }
+
+      events.forEach((event, index) => {
+        const error = isConsoleError(event);
+        const details = getEventDetails(event);
+        const target = event.targetElement || "Target not recorded";
+        const description =
+          details.message ||
+          details.text ||
+          details.error ||
+          details.className ||
+          (error ? "Console error captured." : "Interaction recorded.");
+
+        if (error) {
+          lines.push(`- 🔴 **Console Error ${index + 1}**`);
+        } else {
+          lines.push(`- 🟢 **Step ${index + 1}: ${markdownEscape(event.eventType || "Interaction")}**`);
+        }
+
+        lines.push(`  - ⏱️ **Time:** ${markdownEscape(formatTimestamp(event.timestamp))}`);
+        lines.push(`  - 🎯 **Target:** \`${String(target).replace(/`/g, "\\`")}\``);
+        lines.push(`  - 📝 **Details:** ${markdownEscape(description)}`);
+
+        if (error && details.stack) {
+          lines.push("  - 📋 **Stack trace:**");
+          lines.push("");
+          lines.push("    ```text");
+          lines.push(
+            String(details.stack)
+              .split("\n")
+              .map(line => "    " + line)
+              .join("\n")
+          );
+          lines.push("    ```");
+        }
+
+        lines.push("");
+      });
+
+      lines.push("---");
+      lines.push("_Generated by BugSnap_");
+
+      return lines.join("\n");
+    }
+
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(generateMarkdown());
+
+        copyButton.textContent = "Copied!";
+        pageMessage.className = "message";
+        pageMessage.textContent =
+          "Markdown copied. You can now paste it into Jira.";
+
+        setTimeout(() => {
+          copyButton.textContent = "Copy Markdown";
+        }, 1800);
+      } catch (error) {
+        pageMessage.className = "message error-text";
+        pageMessage.textContent =
+          "Clipboard access failed. Open this report on localhost and allow clipboard access.";
+        console.error("[BugSnap] Clipboard error:", error);
+      }
+    });
+
+    async function loadSession() {
+      try {
+        if (!sessionId || sessionId === "report") {
+          throw new Error("No session ID was provided in the URL.");
+        }
+
+        const response = await fetch(
+          `/api/sessions/${encodeURIComponent(sessionId)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Could not load the session (HTTP ${response.status}).`
+          );
+        }
+
+        const data = await response.json();
+
+        if (data.success === false) {
+          throw new Error(data.message || "Session could not be found.");
+        }
+
+        session = data.session || data;
+
+        if (!session || !Array.isArray(session.events)) {
+          throw new Error(
+            "The API response does not contain a session events array."
+          );
+        }
+
+        events = session.events;
+        copyButton.disabled = false;
+
+        renderTimeline();
+      } catch (error) {
+        timeline.replaceChildren();
+
+        addText(
+          timeline,
+          "div",
+          "empty",
+          error.message || "Unable to load this session."
+        );
+
+        timelineStatus.textContent = "Unable to load";
+        pageMessage.className = "message error-text";
+        pageMessage.textContent =
+          "Check that the Express server is running and that this session ID exists.";
+
+        console.error("[BugSnap] Report loading failed:", error);
+      }
+    }
+
+    loadSession();
+  </script>
+</body>
+</html>

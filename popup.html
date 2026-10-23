@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BugSnap</title>
+
+  <style>
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    #startBtn {
+      background: #2563eb;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #dc2626;
+      color: white;
+    }
+
+    #status {
+      margin-bottom: 0;
+      font-size: 13px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>🐞 BugSnap</h2>
+
+  <button id="startBtn">Start Recording</button>
+  <button id="stopBtn">Stop Recording</button>
+
+  <p id="status">Status: Not recording</p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
