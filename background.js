@@ -1,8 +1,9 @@
 
-const API_URL = "http://localhost:5000/api/sessions";
+const API_BASE_URL = "https://bugsnap-9nc9.onrender.com";
+const API_URL = `${API_BASE_URL}/api/sessions`;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action !== "SAVE_SESSION") {
+  if (message.action !==  `${API_BASE_URL}/report/${encodeURIComponent(data.sessionId)}`) {
     return;
   }
 
