@@ -3,7 +3,7 @@ const API_BASE_URL = "https://bugsnap-9nc9.onrender.com";
 const API_URL = `${API_BASE_URL}/api/sessions`;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action !==  `${API_BASE_URL}/report/${encodeURIComponent(data.sessionId)}`) {
+  if (message.action !== "SAVE_SESSION") {
     return;
   }
 
@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         success: true,
         sessionId: data.sessionId,
         eventCount: data.eventCount,
-        sessionUrl: `${API_URL}/${data.sessionId}`
+        sessionUrl: `${API_BASE_URL}/report/${encodeURIComponent(data.sessionId)}`
       });
     })
     .catch((error) => {
