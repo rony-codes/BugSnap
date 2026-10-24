@@ -253,34 +253,46 @@ function handleInput(event) {
   if (element.sensitive) return;
 
   // Group text entry into one event per field interaction.
+
   if (isTextEntryField(target)) {
     const key = element.selector || element.elementName;
 
     if (pendingInputs.has(key)) {
-      clearTimeout(pendingInputs.get(key));
+      clearTimeout(pendingInputs.get(key).timer);
     }
 
-    const timer = setTimeout(() => {
-      pendingInputs.delete(key);
+    const pendingInput = {
+      target,
+      elementName: element.elementName,
+      timer: setTimeout(() => {
+        pendingInputs.delete(key);
 
-      if (!isRecording) return;
+        if (!isRecording) return;
 
-      recordEvent("input", target, {
-        description: `Entered text in ${element.elementName}`
-      });
-    }, INPUT_DEBOUNCE_MS);
+        recordEvent("input", target, {
+          description: `Entered text in ${element.elementName}`
+        });
+      }, INPUT_DEBOUNCE_MS)
+    };
 
-    pendingInputs.set(key, timer);
+    pendingInputs.set(key, pendingInput);
     return;
   }
+
 
   // Don't produce a stream of input events for other controls.
 }
 
 function flushPendingInputs() {
-  for (const [key, timer] of pendingInputs.entries()) {
-    clearTimeout(timer);
+  for (const [key, pendingInput] of pendingInputs.entries()) {
+    clearTimeout(pendingInput.timer);
     pendingInputs.delete(key);
+
+    if (!isRecording) continue;
+
+    recordEvent("input", pendingInput.target, {
+      description: `Entered text in ${pendingInput.elementName}`
+    });
   }
 }
 
@@ -296,7 +308,7 @@ function handleFocusOut(event) {
   if (!isTextEntryField(target) || element.sensitive) return;
 
   if (pendingInputs.has(key)) {
-    clearTimeout(pendingInputs.get(key));
+    clearTimeout(pendingInputs.get(key).timer);
     pendingInputs.delete(key);
 
     recordEvent("input", target, {
@@ -376,11 +388,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === "STOP_RECORDING") {
     // Flush pending typing events before returning the session.
-    for (const [key, timer] of pendingInputs.entries()) {
-      clearTimeout(timer);
-      pendingInputs.delete(key);
-    }
-
+    flushPendingInputs();
     isRecording = false;
 
     const events = [...recordedEvents];
