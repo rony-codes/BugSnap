@@ -38,10 +38,39 @@
       color: white;
     }
 
+    #copyBtn {
+      background: #16a34a;
+      color: white;
+    }
+
     #status {
       margin-bottom: 0;
       font-size: 13px;
       color: #555;
+    }
+
+    #result {
+      margin-top: 14px;
+      padding: 10px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    #sessionId {
+      font-size: 12px;
+      user-select: text;
+    }
+
+    #reportLink {
+      display: block;
+      margin-top: 8px;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    [hidden] {
+      display: none !important;
     }
   </style>
 </head>
@@ -53,6 +82,13 @@
   <button id="stopBtn">Stop Recording</button>
 
   <p id="status">Status: Not recording</p>
+
+  <section id="result" hidden>
+    <strong>Session saved!</strong>
+    <p id="sessionId"></p>
+    <button id="copyBtn">Copy Session ID</button>
+    <a id="reportLink" href="#" target="_blank">Open report</a>
+  </section>
 
   <script src="popup.js"></script>
 </body>
