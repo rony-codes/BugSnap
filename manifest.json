@@ -1,9 +1,9 @@
 
 {
   "manifest_version": 3,
-  "name": "BugSnap",
-  "version": "1.0.0",
-  "description": "Record manual testing interactions for bug reports.",
+  "name": "BugSnap Beta",
+  "version": "0.1.0",
+  "description": "Record browser interactions and generate structured bug reports. Beta testing build.",
   "permissions": [
     "tabs",
     "storage"
