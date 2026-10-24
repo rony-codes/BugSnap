@@ -1,43 +1,61 @@
 
 let isRecording = false;
 let recordedEvents = [];
+let lastRecordedClick = null;
+
+const pendingInputs = new Map();
+const INPUT_DEBOUNCE_MS = 800;
+
+function clean(value) {
+  return typeof value === "string"
+    ? value.replace(/\s+/g, " ").trim()
+    : "";
+}
 
 function getElementDetails(target) {
   if (!(target instanceof Element)) {
     return {
       elementType: "unknown",
       elementName: "Unknown element",
-      selector: null
+      selector: null,
+      sensitive: false
     };
   }
 
-  // If an icon or span inside a button is clicked, identify its parent control.
-  const element = target.closest(
-    'button, input, textarea, select, a, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="combobox"], [role="option"], [contenteditable="true"]'
-  ) || target;
+  const selectorQuery = [
+    "button",
+    "input",
+    "textarea",
+    "select",
+    "a",
+    '[role="button"]',
+    '[role="link"]',
+    '[role="checkbox"]',
+    '[role="radio"]',
+    '[role="combobox"]',
+    '[contenteditable="true"]'
+  ].join(", ");
 
+  const element = target.closest(selectorQuery) || target;
   const tag = element.tagName.toLowerCase();
   const role = element.getAttribute("role");
   const inputType = tag === "input"
     ? (element.getAttribute("type") || "text").toLowerCase()
-    : null;
+    : "";
 
   let elementType = tag;
 
   if (tag === "button" || role === "button") {
     elementType = "button";
   } else if (tag === "input") {
-    elementType = inputType === "checkbox"
-      ? "checkbox"
-      : inputType === "radio"
-        ? "radio button"
-        : inputType === "submit" || inputType === "reset"
-          ? "button"
-          : inputType === "password"
-            ? "password field"
-            : inputType === "file"
-              ? "file input"
-              : "input field";
+    elementType =
+      inputType === "checkbox" ? "checkbox" :
+      inputType === "radio" ? "radio button" :
+      inputType === "password" ? "password field" :
+      ["submit", "reset", "button"].includes(inputType) ? "button" :
+      inputType === "email" ? "email field" :
+      inputType === "search" ? "search field" :
+      "input field";
   } else if (tag === "textarea") {
     elementType = "text area";
   } else if (tag === "select" || role === "combobox") {
@@ -48,249 +66,305 @@ function getElementDetails(target) {
     elementType = "checkbox";
   } else if (role === "radio") {
     elementType = "radio button";
-  } else if (role === "option") {
-    elementType = "option";
   } else if (element.isContentEditable) {
     elementType = "editable field";
   }
 
-  const getText = (value) =>
-    typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  const labelledBy = clean(
+    element.getAttribute("aria-labelledby")
+  )
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(id => document.getElementById(id)?.innerText || "")
+    .join(" ");
 
-  // Prefer accessible labels over arbitrary page text.
+  const labels = element.labels
+    ? Array.from(element.labels)
+        .map(label => label.innerText)
+        .join(" ")
+    : "";
+
   let elementName =
-    getText(element.getAttribute("aria-label")) ||
-    getText(element.getAttribute("aria-labelledby")
-      ? element.ownerDocument.getElementById(
-          element.getAttribute("aria-labelledby").split(/\s+/)[0]
-        )?.innerText
-      : "") ||
-    getText(element.labels
-      ? Array.from(element.labels).map(label => label.innerText).join(" ")
-      : "") ||
-    getText(element.getAttribute("placeholder")) ||
-    getText(element.getAttribute("title")) ||
-    getText(element.getAttribute("alt")) ||
-    getText(element.innerText) ||
-    getText(element.getAttribute("name")) ||
-    getText(element.id);
+    clean(element.getAttribute("aria-label")) ||
+    clean(labelledBy) ||
+    clean(labels) ||
+    clean(element.getAttribute("placeholder")) ||
+    clean(element.getAttribute("title")) ||
+    clean(element.innerText) ||
+    clean(element.getAttribute("name")) ||
+    clean(element.id) ||
+    `${elementType} element`;
 
-  // Never expose values from sensitive fields.
-  const isSensitive =
+  const sensitive =
     inputType === "password" ||
-    element.getAttribute("autocomplete") === "current-password" ||
-    element.getAttribute("autocomplete") === "new-password" ||
-    element.getAttribute("autocomplete") === "one-time-code" ||
-    element.getAttribute("type") === "hidden" ||
-    element.matches('[data-private], [data-sensitive]');
+    inputType === "hidden" ||
+    ["current-password", "new-password", "one-time-code"].includes(
+      element.getAttribute("autocomplete")
+    ) ||
+    element.matches("[data-private], [data-sensitive]");
 
-  if (isSensitive) {
+  if (sensitive) {
     elementName =
-      getText(element.getAttribute("aria-label")) ||
-      getText(element.labels
-        ? Array.from(element.labels).map(label => label.innerText).join(" ")
-        : "") ||
-      (inputType === "password" ? "Password field" : "Sensitive field");
+      clean(element.getAttribute("aria-label")) ||
+      clean(labels) ||
+      (inputType === "password"
+        ? "Password field"
+        : "Sensitive field");
   }
 
-  if (!elementName) {
-    elementName = `${elementType} element`;
+  let selector = tag;
+
+  if (element.id) {
+    selector = `#${CSS.escape(element.id)}`;
+  } else if (element.getAttribute("data-testid")) {
+    selector = `[data-testid="${CSS.escape(
+      element.getAttribute("data-testid")
+    )}"]`;
+  } else if (element.getAttribute("name")) {
+    selector = `${tag}[name="${CSS.escape(
+      element.getAttribute("name")
+    )}"]`;
   }
 
   return {
     elementType,
     elementName: elementName.slice(0, 100),
-    selector: buildSelector(element),
-    isSensitive
+    selector,
+    sensitive,
+    tag,
+    inputType
   };
 }
 
-function buildSelector(element) {
-  if (element.id) {
-    return `#${CSS.escape(element.id)}`;
-  }
-
-  const tag = element.tagName.toLowerCase();
-  const name = element.getAttribute("name");
-
-  if (name) {
-    return `${tag}[name="${CSS.escape(name)}"]`;
-  }
-
-  const testId =
-    element.getAttribute("data-testid") ||
-    element.getAttribute("data-test");
-
-  if (testId) {
-    const attribute = element.hasAttribute("data-testid")
-      ? "data-testid"
-      : "data-test";
-
-    return `${tag}[${attribute}="${CSS.escape(testId)}"]`;
-  }
-
-  // Build a short path using tag names and sibling positions.
-  const parts = [];
-  let current = element;
-
-  while (
-    current &&
-    current instanceof Element &&
-    parts.length < 4
-  ) {
-    let part = current.tagName.toLowerCase();
-
-    if (current.parentElement) {
-      const sameTagSiblings = Array.from(
-        current.parentElement.children
-      ).filter(child => child.tagName === current.tagName);
-
-      if (sameTagSiblings.length > 1) {
-        part += `:nth-of-type(${
-          sameTagSiblings.indexOf(current) + 1
-        })`;
-      }
-    }
-
-    parts.unshift(part);
-
-    if (current.id) {
-      parts[0] = `#${CSS.escape(current.id)}`;
-      break;
-    }
-
-    current = current.parentElement;
-  }
-
-  return parts.join(" > ");
-}
-
-function addEvent(action, target, extra = {}) {
-  if (!isRecording) return;
-
-  const details = getElementDetails(target);
-
-  recordedEvents.push({
-    action,
-    elementType: details.elementType,
-    elementName: details.elementName,
-    selector: details.selector,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    ...extra
-  });
-
-  // Keep the extension popup informed of the current event count.
+function saveEventsToStorage() {
   chrome.storage.local.set({
-    isRecording: true,
+    isRecording,
     recordedEvents
   });
+}
+
+function recordEvent(eventType, target, extraDetails = {}) {
+  if (!isRecording) return;
+
+  const element = getElementDetails(target);
+
+  recordedEvents.push({
+    timestamp: new Date().toISOString(),
+    eventType,
+    targetElement: element.elementType,
+    details: {
+      elementName: element.elementName,
+      selector: element.selector,
+      url: location.href,
+      ...extraDetails
+    }
+  });
+
+  saveEventsToStorage();
+}
+
+function describeClick(element) {
+  if (element.elementType === "link") {
+    return "Clicked link";
+  }
+
+  if (element.elementType === "button") {
+    return "Clicked button";
+  }
+
+  if (element.elementType === "checkbox") {
+    return "Clicked checkbox";
+  }
+
+  if (element.elementType === "radio button") {
+    return "Selected radio button";
+  }
+
+  if (element.elementType === "dropdown") {
+    return "Opened dropdown";
+  }
+
+  if (
+    element.elementType.includes("field") ||
+    element.elementType === "text area" ||
+    element.elementType === "editable field"
+  ) {
+    return "Focused field";
+  }
+
+  // Avoid recording clicks on headings, paragraphs, and generic containers.
+  return null;
 }
 
 function handleClick(event) {
   if (!isRecording) return;
 
-  const details = getElementDetails(event.target);
+  const element = getElementDetails(event.target);
+  const action = describeClick(element);
 
-  addEvent(
-    details.elementType === "link" ? "click_link" : "click",
-    event.target
-  );
+  if (!action) return;
+
+  // Suppress duplicate clicks on the same element within a short interval.
+  const now = Date.now();
+  const clickKey = `${element.selector}|${element.elementName}`;
+
+  if (
+    lastRecordedClick &&
+    lastRecordedClick.key === clickKey &&
+    now - lastRecordedClick.time < 250
+  ) {
+    return;
+  }
+
+  lastRecordedClick = { key: clickKey, time: now };
+
+  recordEvent("click", event.target, {
+    description: `${action}: ${element.elementName}`
+  });
+}
+
+function isTextEntryField(target) {
+  if (!(target instanceof Element)) return false;
+
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (target.isContentEditable) return true;
+
+  if (!(target instanceof HTMLInputElement)) return false;
+
+  return [
+    "text",
+    "email",
+    "search",
+    "tel",
+    "url",
+    "number"
+  ].includes((target.type || "text").toLowerCase());
 }
 
 function handleInput(event) {
   if (!isRecording) return;
 
   const target = event.target;
-
   if (!(target instanceof Element)) return;
 
-  const details = getElementDetails(target);
+  const element = getElementDetails(target);
 
-  // Do not capture the values typed into fields.
-  if (
-    details.isSensitive ||
-    target.matches('input[type="password"], input[type="hidden"]')
-  ) {
-    addEvent("interact_sensitive_field", target);
+  // Never record typed values. Sensitive fields produce no typing events.
+  if (element.sensitive) return;
+
+  // Group text entry into one event per field interaction.
+  if (isTextEntryField(target)) {
+    const key = element.selector || element.elementName;
+
+    if (pendingInputs.has(key)) {
+      clearTimeout(pendingInputs.get(key));
+    }
+
+    const timer = setTimeout(() => {
+      pendingInputs.delete(key);
+
+      if (!isRecording) return;
+
+      recordEvent("input", target, {
+        description: `Entered text in ${element.elementName}`
+      });
+    }, INPUT_DEBOUNCE_MS);
+
+    pendingInputs.set(key, timer);
     return;
   }
 
-  addEvent("input", target);
+  // Don't produce a stream of input events for other controls.
+}
+
+function flushPendingInputs() {
+  for (const [key, timer] of pendingInputs.entries()) {
+    clearTimeout(timer);
+    pendingInputs.delete(key);
+  }
+}
+
+function handleFocusOut(event) {
+  if (!isRecording) return;
+
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const element = getElementDetails(target);
+  const key = element.selector || element.elementName;
+
+  if (!isTextEntryField(target) || element.sensitive) return;
+
+  if (pendingInputs.has(key)) {
+    clearTimeout(pendingInputs.get(key));
+    pendingInputs.delete(key);
+
+    recordEvent("input", target, {
+      description: `Entered text in ${element.elementName}`
+    });
+  }
 }
 
 function handleChange(event) {
   if (!isRecording) return;
 
   const target = event.target;
-
   if (!(target instanceof Element)) return;
 
-  const details = getElementDetails(target);
+  const element = getElementDetails(target);
 
-  if (details.isSensitive) {
-    addEvent("change_sensitive_field", target);
+  if (element.sensitive) return;
+
+  if (
+    target instanceof HTMLInputElement &&
+    ["checkbox", "radio"].includes(target.type)
+  ) {
+    recordEvent("change", target, {
+      checked: target.checked,
+      description: target.checked
+        ? `Selected ${element.elementName}`
+        : `Unselected ${element.elementName}`
+    });
     return;
   }
 
-  const extra = {};
-
-  // Capture safe, useful state for checkboxes and radio buttons.
   if (
-    target.matches('input[type="checkbox"], input[type="radio"]') ||
-    target.getAttribute("role") === "checkbox" ||
-    target.getAttribute("role") === "radio"
+    target instanceof HTMLSelectElement ||
+    target.getAttribute("role") === "combobox"
   ) {
-    extra.checked = target.matches('input[type="checkbox"], input[type="radio"]')
-      ? target.checked
-      : target.getAttribute("aria-checked");
+    // Do not record selected values because they may contain personal data.
+    recordEvent("change", target, {
+      description: `Changed selection in ${element.elementName}`
+    });
   }
-
-  // Record that a selection changed, but not the user's entered text.
-  addEvent("change", target, extra);
-}
-
-function handleNavigation() {
-  if (!isRecording) return;
-
-  recordedEvents.push({
-    action: "navigation",
-    elementType: "page",
-    elementName: document.title || "Page",
-    selector: null,
-    url: window.location.href,
-    timestamp: new Date().toISOString()
-  });
-
-  chrome.storage.local.set({
-    isRecording: true,
-    recordedEvents
-  });
 }
 
 document.addEventListener("click", handleClick, true);
 document.addEventListener("input", handleInput, true);
+document.addEventListener("focusout", handleFocusOut, true);
 document.addEventListener("change", handleChange, true);
 
-// Listen for commands from popup.js.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "START_RECORDING") {
+    flushPendingInputs();
+
     recordedEvents = [];
+    lastRecordedClick = null;
     isRecording = true;
 
     recordedEvents.push({
-      action: "recording_started",
-      elementType: "page",
-      elementName: document.title || "Page",
-      selector: null,
-      url: window.location.href,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      eventType: "recording_started",
+      targetElement: "page",
+      details: {
+        elementName: document.title || "Page",
+        selector: null,
+        url: location.href,
+        description: `Started recording on ${document.title || location.href}`
+      }
     });
 
-    chrome.storage.local.set({
-      isRecording: true,
-      recordedEvents
-    });
+    saveEventsToStorage();
 
     sendResponse({
       success: true,
@@ -301,16 +375,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "STOP_RECORDING") {
+    // Flush pending typing events before returning the session.
+    for (const [key, timer] of pendingInputs.entries()) {
+      clearTimeout(timer);
+      pendingInputs.delete(key);
+    }
+
     isRecording = false;
 
     const events = [...recordedEvents];
+    recordedEvents = [];
 
     chrome.storage.local.set({
       isRecording: false,
       recordedEvents: []
     });
-
-    recordedEvents = [];
 
     sendResponse({
       success: true,
