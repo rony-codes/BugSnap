@@ -166,8 +166,15 @@ The backend is maintained separately in the `server/` directory.
 For local backend development, consult the backend configuration and dependencies before starting the server. Do not commit `.env` files, database credentials, or other secrets.
 
 ## 📄 License
+## Copyright and Usage
 
-Check the repository for the applicable license before redistributing or modifying BugSnap.
+Copyright © 2026 Rohan Kumar. All rights reserved.
+
+BugSnap and its original source code are proprietary. No license is granted to copy, modify, redistribute, or commercially use this code except where explicitly authorized in writing by the copyright holder.
+
+Third-party dependencies and assets remain subject to their respective licenses.
+
+This notice is informational and is not a substitute for a formal legal agreement.
 
 ---
 
